@@ -35,7 +35,6 @@ class LeNet(nn.Module):
 		self.fc3 = nn.Linear(84, 10)
 		self.softmax = nn.Softmax(dim = 1)
 
-	
 	def forward(self, x):
 
 		out = self.conv1(x)
@@ -59,14 +58,6 @@ class LeNet(nn.Module):
 		out = self.softmax(out)
 
 		return out 
-
-
-def imshow(img):
-    img = img / 2 + 0.5     # unnormalize
-    npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))
-    plt.show()
-
 
 
 def train_model(model, criterion, optimizer, trainloader, epoch_number = 2):
@@ -110,16 +101,43 @@ def train_model(model, criterion, optimizer, trainloader, epoch_number = 2):
 	torch.save(net.state_dict(), "./backup/2_epochs.pt")
 	print("weigths saved!")
 	return 
+
+
+def imshow(img):
+    img = img / 2 + 0.5     # unnormalize
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1, 2, 0)))
+    plt.show()
+
+
+def evaluate_perfomance(model, testloader):
+	correct = 0
+	total = 0
 	
+	#torch.no_grad sets temporarilly all the requires _grad flags to false! we don't need it for an evaluation
+	with torch.no_grad():
+		for data in testloader:
+			inputs, labels = data
+			outputs = model(inputs)
+
+			#Gets the maximun of the softmax layer (i.e the most likely class)
+			_, predicted = torch.max(outputs.data, 1)
+
+			#Sum the actual batch size to the total
+			total += labels.size(0)
+
+
+			for i, predicted_class in enumerate(predicted):
+				if torch.eq(predicted_class, labels[i]):
+					correct += 1
+
+	print('Accuracy on {} test image is: {}'.format(total, 100*correct/total))
+
+
+
 if __name__ == '__main__':
 	net = LeNet()
-	#print(net)
-	#input = torch.randn(1, 1, 32, 32)
-	#out = net(input)
-	#target = torch.randn(10)  
-	#print(out)
 
-	#ToTensor transform a PIL image or a numpy array to a torch tensor. Normalize normalizes an image with mean and standard deviations (arrays of channels)
 	transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 	#Loads or download a dataset 
@@ -137,21 +155,13 @@ if __name__ == '__main__':
 	criterion = nn.CrossEntropyLoss()
 	optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
-	train_model(net, criterion, optimizer, trainloader)
 
+	#train_model(net, criterion, optimizer, trainloader)
 
-	#Mean Squared Error 
-	#criterion = nn.MSELoss()
-	#loss = criterion(out, target)
-	#print(loss.grad_fn)
+	net.load_state_dict(torch.load("./backup/2_epochs.pt"))
+	net.eval()
 
-	#Propagates the gradiant to backward
-	#loss.backward()
-
-
-	#Create an optmizares Stochastic Gradient Descent 
-	#optimizer = optim.SGD(net.parameters(), lr = 0.01)
-
+	evaluate_perfomance(net, testloader)
 
 
 
