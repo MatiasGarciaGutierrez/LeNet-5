@@ -1,13 +1,18 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 class LeNet(nn.Module):
 	def __init__(self):
 
 		super(LeNet, self).__init__()
-		self.conv1 = nn.Conv2d(1, 6, (5,5))
+		self.conv1 = nn.Conv2d(1, 6, (5,5), padding = 2)
 
 		#In_place is used for changing directly the tensor without having to copy it 
 		self.relu1 = nn.ReLU(inplace = True)
@@ -55,11 +60,106 @@ class LeNet(nn.Module):
 
 		return out 
 
+
+def imshow(img):
+    img = img / 2 + 0.5     # unnormalize
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1, 2, 0)))
+    plt.show()
+
+
+
+def train_model(model, criterion, optimizer, trainloader, epoch_number = 2):
+	finish = False
+	for epoch in range(epoch_number):
+
+		running_loss = 0.0
+		#enumerate allows for automatic counter in a for loop 
+		for i, data in enumerate(trainloader, 0):
+
+			# get the inputs of the data.
+			inputs, labels = data
+
+			#Clean the gradients
+			optimizer.zero_grad()
+
+			#Forward
+			outputs = model(inputs)
+
+			#Calculate loss
+			loss = criterion(outputs, labels)
+
+			#Propagates the gradient 
+			loss.backward()
+
+			#Updates the weigths of the network
+			optimizer.step()
+
+			running_loss += loss.item()
+
+			if i % 2000 == 1999:    # print every 2000 mini-batches
+				print('[%d, %5d] loss: %.3f' %(epoch + 1, i + 1, running_loss / 2000))
+				if (running_loss/2000 < 0.06):
+					finish = True
+					return
+
+				running_loss = 0.0
+
+	print('Finished Training')
+	print("Saving weigths ...")
+	torch.save(net.state_dict(), "./backup/2_epochs.pt")
+	print("weigths saved!")
+	return 
+	
 if __name__ == '__main__':
 	net = LeNet()
-	print(net)
-	input = torch.randn(1, 1, 32, 32)
-	out = net(input)
-	print(out)
+	#print(net)
+	#input = torch.randn(1, 1, 32, 32)
+	#out = net(input)
+	#target = torch.randn(10)  
+	#print(out)
+
+	#ToTensor transform a PIL image or a numpy array to a torch tensor. Normalize normalizes an image with mean and standard deviations (arrays of channels)
+	transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+	#Loads or download a dataset 
+	trainset = torchvision.datasets.MNIST(root = './data', train = True, download = True, transform  = transform)
+
+	trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, shuffle = True, num_workers = 2)
+
+	testset = torchvision.datasets.MNIST(root = './data', train = False, download = True, transform = transform)
+
+	testloader = torch.utils.data.DataLoader(testset, batch_size = 4, shuffle = False, num_workers = 2)
+
+
+	classes = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
+
+	criterion = nn.CrossEntropyLoss()
+	optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+
+	train_model(net, criterion, optimizer, trainloader)
+
+
+	#Mean Squared Error 
+	#criterion = nn.MSELoss()
+	#loss = criterion(out, target)
+	#print(loss.grad_fn)
+
+	#Propagates the gradiant to backward
+	#loss.backward()
+
+
+	#Create an optmizares Stochastic Gradient Descent 
+	#optimizer = optim.SGD(net.parameters(), lr = 0.01)
+
+
+
+
+
+
+
+
+
+	
 
 
